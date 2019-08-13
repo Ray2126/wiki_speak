@@ -53,6 +53,8 @@ delete_creations (){
 create_creations (){
 	echo "creating was called"
 	get_wiki_search
+	
+	#display sentences to terminal
 	counter=1
 	echo $wiki_search | sed 's/[.]/&\n/g' | sed '$d' | while read sentence ; do
 		echo -n "[$counter]" 
@@ -60,7 +62,48 @@ create_creations (){
 		counter=$((counter+1))
 	done 
 	
+	while [[ true ]]
+	do
+		read -p "How many sentences would you like in the final creation? " num_sentences
+		
+		#check if number entered is valid
+		if ! [[ "$num_sentences" =~ ^[0-9]+$ ]]
+		then
+			echo "Please enter a valid number."
+		else
+			if (($num_sentences >= 1 && $num_sentences <= `wc -l < temp.txt`))
+			then
+				break
+			else
+				echo "Please enter a valid number."
+			fi
+		fi
+	done
 	
+	
+	echo "`head -$num_sentences < temp.txt`" > temp.txt
+	cat temp.txt | text2wave -o speech.wav
+	
+	while [[ true ]]
+	do
+		read -p "Enter a name for this creation - " creation_name
+		if [[ -f $creation_name ]]
+		then
+			echo "File already exists."
+		else
+			break
+		fi
+	done
+	
+	vid_length=`soxi -D speech.wav`
+	ffmpeg -f lavfi -i color=c=blue:s=320x240 -t "${vid_length}" -vf "drawtext=fontsize=30:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2:text='$searched_word'" video.mp4
+	
+	mkdir -p creations
+	ffmpeg -i video.mp4 -i speech.wav ./creations/"${creation_name}".mp4 
+	
+	rm -f temp.txt
+	rm -f speech.wav
+	rm -f video.mp4
 }
 
 get_wiki_search (){
