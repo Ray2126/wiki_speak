@@ -21,6 +21,10 @@ main_menu (){
 		if [ "$selection" == "l" ]
 		then
 			list_creations
+			echo ""
+			read -n 1 -s -r -p "Press any key to return to main menu  "
+			echo ""
+			main_menu
 		elif [ "$selection" == "p" ]
 		then
 			play_creations
@@ -32,7 +36,7 @@ main_menu (){
 			create_creations
 		elif [ "$selection" == "q" ]
 		then
-			echo "quitting"
+			echo "Quitting..."
 			exit 0
 		fi
 	done
@@ -44,57 +48,84 @@ list_creations (){
 		echo "No creations found. "
 	else
 		counter=1
+		#list files in creations folder
 		ls ./creations | sed 's/.mp4/\n/g' | sed '/^$/d' | sort | while read item ; do
 			echo -n "[$counter]" 
 			echo " $item"
 			counter=$((counter+1))
 		done
 	fi
-	
 }
 
 play_creations (){
-	list_creations
-	while [[ true ]]
-	do		
-		read -p "Which creation would you like to play? Enter the name (not the number) - " play_choice
-		if [[ -f ./creations/"$play_choice.mp4" ]]
-		then
-			break
-		else
-			echo "That creation does not exist."
-		fi
-	done
-	ffplay -autoexit ./creations/"$play_choice.mp4" &> /dev/null
-	if [[ $? != 0 ]]
+	if [[ -z "`ls -A ./creations`" ]]
 	then
-		echo "Creation could not be played."
+		echo "No creations found."
 		echo ""
 		read -n 1 -s -r -p "Press any key to return to main menu  "
 		echo ""
-		main_menu
+	else
+		list_creations
+		while [[ true ]]
+		do		
+			read -p "Which creation would you like to play? Enter the name (not the number). Enter [q] to quit to main menu  - " play_choice
+			play_choice=${play_choice,,}
+			if [[ -f ./creations/"$play_choice.mp4" ]]
+			then
+				break
+			elif [[ $play_choice == 'q' ]]
+			then
+				main_menu
+			else
+				echo "That creation does not exist."
+			fi
+		done
+		ffplay -autoexit ./creations/"$play_choice.mp4" &> /dev/null
+		if [[ $? != 0 ]]
+		then
+			echo "Creation could not be played." >&2
+			echo ""
+			read -n 1 -s -r -p "Press any key to return to main menu  "
+			echo ""
+			main_menu
+		fi
 	fi
 	main_menu
 }
 
 delete_creations (){
-	list_creations
-	while [[ true ]]
-	do		
-		read -p "Which creation would you like to delete? Enter the name (not the number) - " delete_choice
-		if [[ -f ./creations/"$delete_choice.mp4" ]]
-		then
-			read -p "You are going to delete $delete_choice. Are you sure [y/n] - " delete_sure
-			if [[ $delete_sure == "y" ]]
+	if [[ -z "`ls -A ./creations`" ]]
+	then
+		echo "No creations found. "
+		echo ""
+		read -n 1 -s -r -p "Press any key to return to main menu  "
+		echo ""
+	else
+		list_creations
+		while [[ true ]]
+		do		
+			read -p "Which creation would you like to delete? Enter the name (not the number) Enter [q] to quit to main menu - " delete_choice
+			delete_choice=${delete_choice,,}
+			if [[ -f ./creations/"$delete_choice.mp4" ]]
 			then
-				rm -f ./creations/"$delete_choice.mp4"
-				echo "Delete Successful!"
-				break
+				read -p "You are going to delete $delete_choice. Are you sure [y/n] - " delete_sure
+				delete_sure=${delete_sure,,}
+				if [[ $delete_sure == "y" ]]
+				then
+					rm -f ./creations/"$delete_choice.mp4"
+					echo "Delete Successful!"
+					break
+				else
+					main_menu
+				fi
+			elif [[ $delete_choice == 'q' ]]
+			then
+				main_menu
+			else
+				echo "That creation does not exist."
 			fi
-		else
-			echo "That creation does not exist."
-		fi
-	done
+		done
+	fi
 	main_menu
 }
 
@@ -138,6 +169,7 @@ create_creations (){
 		then
 			echo "File already exists."
 			read -p "Would you like to overwrite? [y/n] " do_overwrite
+			do_overwrite=${do_overwrite,,}
 			if [[ $do_overwrite == "y" ]]
 			then
 				rm -f ./creations/"$creation_name.mp4"
@@ -155,7 +187,7 @@ create_creations (){
 	ffmpeg -f lavfi -i color=c=blue:s=320x240 -t "${vid_length}" -vf "drawtext=fontsize=30:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2:text='$searched_word'" video.mp4 &> /dev/null
 	if [[ $? == 0 ]]
 	then
-		ffmpeg -i video.mp4 -i speech.wav ./creations/"${creation_name}".mp4 &> /dev/null
+		ffmpeg -i video.mp4 -i speech.wav -strict experimental ./creations/"${creation_name}".mp4 &> /dev/null
 		if [[ $? == 0 ]]
 		then
 			echo "Success!"
@@ -189,6 +221,7 @@ get_wiki_search (){
 		then
 			echo "No wikipedia page found for $searched_word."
 			read -p "Would you like to exit to main menu [y/n]: " exit_to_menu
+			exit_to_menu=${exit_to_menu,,}
 			if [[ $exit_to_menu == "y" ]]
 			then
 				main_menu
